@@ -1,23 +1,28 @@
-from flask import Flask
+import json
+import os
 import sys
+
+import requests as req
+from flask import Flask
+from flask import render_template
+from flask import request
 
 app = Flask(__name__)
 
+APIKEY = os.environ.get('API_KEY')
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    return 'Hello, world!'
+    weather_info = {}
+    if request.method == 'POST':
+        city = request.form['city_name']
+        r = req.get(f'http://api.openweathermap.org/data/2.5/weather?q={city}&appid={APIKEY}')
+        j = json.loads(r.text)
+        temp_c = j.get('main').get('temp')
+        state = j.get('weather')[0].get('main')
+        weather_info = {'city': city.upper(), 'state': state, 'degree': temp_c//100}
 
-
-@app.route('/profile')
-def profile():
-    return 'This is profile page'
-
-
-@app.route('/login')
-def log_in():
-    return 'This is login page'
-
+    return render_template('index.html', weather=weather_info)
 
 # don't change the following way to run flask:
 if __name__ == '__main__':
