@@ -1,17 +1,16 @@
-import os
 import sys
 from datetime import datetime, timezone
 
 import requests as req
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///weather.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///weather.db?check_same_thread=False'
 db = SQLAlchemy(app)
 
 
-APIKEY = os.environ.get('WEATHER_API_KEY')
+APIKEY = 'fdf85c3cf9def332433da61e066c51be'
 WEATHER_ENDPOINT = "https://api.openweathermap.org/data/2.5/weather"
 
 
@@ -21,6 +20,10 @@ class City(db.Model):
 
     def __repr__(self):
         return self.name
+
+db.create_all()
+
+db.session.commit()
 
 
 def get_daytime(time, response):
@@ -55,21 +58,23 @@ def call_weather_api(city, units='metric'):
                                'time_now': time_now, 'time_of_day': time_of_day}}
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def index():
     weather_info = {}
-
-    if request.method == 'POST':
-        city = City(name = request.form['city_name'])
-        db.session.add(city)
-        db.session.commit()
 
     for city in City.query.all():
         weather_info.update(call_weather_api(city))
 
     return render_template('index.html', weather=weather_info)
 
-# don't change the following way to run flask:
+@app.route('/add', methods=['POST'])
+def add():
+    if request.method == 'POST':
+        city = City(name = request.form['city_name'])
+        db.session.add(city)
+        db.session.commit()
+    return redirect(url_for('index'))
+
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         arg_host, arg_port = sys.argv[1].split(':')
